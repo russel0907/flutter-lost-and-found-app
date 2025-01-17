@@ -129,17 +129,18 @@ class _FoundPageState extends State<FoundPage> {
 
   Future<void> _activateCamera() async {
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-    setState(() {
-      _image = photo; // Store the image in the state
-    });
+    if (photo != null) {
+      setState(() {
+        _image = photo;
+      });
+    }
+
+    print('Image path: ${_image?.path}');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
