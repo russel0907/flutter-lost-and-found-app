@@ -145,8 +145,9 @@ class FoundPage extends StatefulWidget {
 }
 
 class _FoundPageState extends State<FoundPage> {
-  XFile? _image; // Store the captured image
-  final ImagePicker _picker = ImagePicker(); // Image picker instance
+  XFile? _image;
+  final ImagePicker _picker = ImagePicker();
+  final TextEditingController _nameController = TextEditingController();
 
   Future<void> _activateCamera() async {
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
@@ -155,37 +156,58 @@ class _FoundPageState extends State<FoundPage> {
       setState(() {
         _image = photo;
       });
+    }
+  }
 
-      // Convert XFile to Uint8List
-      final Uint8List bytes = await photo.readAsBytes();
-
-      // Create a temporary file to pass to Supabase upload
-      final tempDir = await getTemporaryDirectory();
-      final tempFile =
-          File('${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await tempFile.writeAsBytes(bytes);
-
-      try {
-        // Upload to Supabase Storage
-        final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-        final response = await Supabase.instance.client.storage
-            .from('found-items') // Replace with your Supabase bucket name
-            .upload('images/$fileName.jpg', tempFile);
-
-        print('Image uploaded successfully: $response');
-
-        // Get public URL of the uploaded image
-        final imageUrl = Supabase.instance.client.storage
-            .from('found-items')
-            .getPublicUrl('images/$fileName.jpg');
-
-        print('Public URL: $imageUrl');
-      } catch (e) {
-        print('Error uploading image: $e');
-      }
+  Future<void> _submitFoundItem() async {
+    if (_image == null || _nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please capture an image and enter a name.')),
+      );
+      return;
     }
 
-    print('Image path: ${_image?.path}');
+    final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+
+    try {
+      // Convert XFile to File
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName.jpg');
+      await tempFile.writeAsBytes(await File(_image!.path).readAsBytes());
+
+      // Upload to Supabase Storage
+      final response = await Supabase.instance.client.storage
+          .from('found-items') // Replace 'found-items' with your bucket name
+          .upload('images/$fileName.jpg', tempFile);
+
+      print('Image uploaded successfully: $response');
+
+      // Retrieve the public URL of the uploaded image
+      final imageUrl = Supabase.instance.client.storage
+          .from('found-items')
+          .getPublicUrl('images/$fileName.jpg');
+
+      // Insert the data into the 'found' table
+      final newRecord = await Supabase.instance.client
+          .from('found') // Replace 'found' with your actual table name
+          .insert({
+        'name': _nameController.text, // Name entered by user
+        'image': imageUrl, // Public URL of the uploaded image
+        'created_at': DateTime.now().toIso8601String(), // Current timestamp
+      }).select();
+
+      print('Record inserted successfully: $newRecord');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item submitted successfully!')),
+      );
+    } catch (e) {
+      print('Error submitting data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
@@ -209,57 +231,12 @@ class _FoundPageState extends State<FoundPage> {
             const SizedBox(height: 20),
             // Submit button
             ElevatedButton(
-              onPressed: _image != null
-                  ? () async {
-                      final fileName =
-                          DateTime.now().millisecondsSinceEpoch.toString();
-
-                      try {
-                        // Convert XFile to File
-                        final tempDir = await getTemporaryDirectory();
-                        final tempFile = File('${tempDir.path}/$fileName.jpg');
-                        await tempFile.writeAsBytes(
-                            await File(_image!.path).readAsBytes());
-
-                        // Upload to Supabase Storage
-                        final response = await Supabase.instance.client.storage
-                            .from(
-                                'found-items') // Replace 'found-items' with your bucket name
-                            .upload('images/$fileName.jpg', tempFile);
-
-                        print(response);
-
-                        // Retrieve the public URL of the uploaded image
-                        final imageUrl = Supabase.instance.client.storage
-                            .from('found-items')
-                            .getPublicUrl('images/$fileName.jpg');
-
-                        // Save image URL to database
-                        await Supabase.instance.client
-                            .from(
-                                'found_reports') // Replace 'found_reports' with your table name
-                            .insert({
-                          'image_url': imageUrl,
-                          'description': 'Found item',
-                        });
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Image submitted successfully!')),
-                        );
-                      } catch (e) {
-                        print('Error submitting data: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e')),
-                        );
-                      }
-                    }
-                  : null,
+              onPressed: _image != null ? _submitFoundItem : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.greenAccent,
               ),
               child: const Text('Submit'),
-            )
+            ),
           ],
         ),
       ),
