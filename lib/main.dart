@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
-
-const supabaseUrl = 'https://gehaaanmpozoabzjptbp.supabase.co';
-const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
