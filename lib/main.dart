@@ -12,12 +12,14 @@ const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Ensure SUPABASE_KEY is provided
-  if (supabaseKey.isEmpty) {
-    throw Exception(
-        'SUPABASE_KEY is not defined. Use --dart-define to provide it.');
-  }
+  // Load environment variables from the .env file
+  await dotenv.load(fileName: ".env");
 
+  // Get the values of SUPABASE_URL and SUPABASE_ANON_KEY from the .env file
+  final supabaseUrl = dotenv.env['SUPABASE_URL']!;
+  final supabaseKey = dotenv.env['SUPABASE_ANON_KEY']!;
+
+  // Initialize Supabase with the values from the .env file
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseKey,
