@@ -146,7 +146,7 @@ class _FoundPageState extends State<FoundPage> {
   final TextEditingController _nameController = TextEditingController();
 
   Future<void> _activateCamera() async {
-    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+    final XFile? photo = await _picker.pickImage(source: ImageSource.gallery);
 
     if (photo != null) {
       setState(() {
